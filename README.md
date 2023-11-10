@@ -67,7 +67,7 @@ You are all set! If you have not yet taken one of the club's GitHub workshops or
 
 Feel free to start your own game or contribute to an existing one.
 
-Not sure where to start? Visit the [Issues]() section for a list of tickets that will help get you started.
+Not sure where to start? Visit the [Issues](https://github.com/nsccs/pygames/issues) section for a list of tickets that will help get you started.
 
 See a bug or want to request a feature or change? Create an issue!
 
