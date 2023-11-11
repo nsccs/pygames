@@ -1,6 +1,6 @@
 # Pygames
 
-A mono-repo for a collection of different games created with the Pygame library.
+A mono-repo for a collection of different games created with the Pygame library. Games are in various stages of development and functionality. The purpose of this repository is to get students to collaborate, learn GitHub, and have fun! So propose a new game or contribute to one listed here, but get involved and reach out to the club if you want help with setup or anything else!
 
 ## Get Started
 
@@ -80,4 +80,5 @@ Main is protected and will require a PR and approval to merge into main.
 ## Game List
 
 1. Asteroid clone
+2. Conway's Game of Life
 
