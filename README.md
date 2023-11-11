@@ -23,6 +23,8 @@ Each game directory is its own project.
 
 Install Python 3.12
 
+Fork the directory and set the upstream repository (see [Workbook: Contribute](https://nsccs.github.io/git_and_github_workshop/contribute.html))
+
 Move into the directory of the game you wish to contribute to
 
 ```shell
