@@ -112,15 +112,15 @@ class Game:
         right_cell = self.cells[cell.get_right_neighbor_loc()]
         
 
-        living = len(list(filter(lambda x: x, [
-            top_cell.is_alive, 
-            top_left_cell.is_alive,
-            top_right_cell.is_alive,
-            bottom_cell.is_alive,
-            bottom_left_cell.is_alive,
-            bottom_right_cell.is_alive,
-            left_cell.is_alive,
-            right_cell.is_alive
+        living = len(list(filter(lambda x: x.is_alive, [
+            top_cell, 
+            top_left_cell,
+            top_right_cell,
+            bottom_cell,
+            bottom_left_cell,
+            bottom_right_cell,
+            left_cell,
+            right_cell
         ])))
 
         return living
