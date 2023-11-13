@@ -6,27 +6,29 @@ from typing import Tuple
 
 # grid size is height and width of grid
 GRID_LEN = 20
-GRID_LAST = GRID_LEN - 1 
+GRID_LAST = GRID_LEN - 1
 
 # chars for printing game to console. change to something fun if you want!
 ALIVE = '⬜'
 DEAD = '⬛'
 
+
 class OperationFlag(Enum):
     """ Enum used when inserting references to cells into the list of changing cells every cycle"""
-    REVIVE = 0 
+    REVIVE = 0
     KILL = 1
+
 
 class Cell:
     """Simple class that defines a cell.
-    
+
     Initialized with the location in the grid. This is desirable because it 
     removes the need for any underlying 2d array for the grid as we can use location
     as keys in a dictonary.
     """
-    
+
     # location of cell and whether it is alive or dead
-    __slots__= 'x', 'y', 'is_alive'
+    __slots__ = 'x', 'y', 'is_alive'
 
     def __init__(self, location: Tuple[int, int]) -> None:
         (self.x, self.y) = location
@@ -40,7 +42,7 @@ class Cell:
             return (GRID_LAST, self.y)
         else:
             return (self.x - 1, self.y)
-    
+
     def get_right_neighbor_loc(self) -> Tuple[int, int]:
         if self.x + 1 > GRID_LAST:
             return (0, self.y)
@@ -52,7 +54,7 @@ class Cell:
             return (self.x, GRID_LAST)
         else:
             return (self.x, self.y - 1)
-    
+
     def get_bottom_neighbor_loc(self) -> Tuple[int, int]:
         if self.y + 1 > GRID_LAST:
             return (self.x, 0)
@@ -60,8 +62,6 @@ class Cell:
             return (self.x, self.y + 1)
 
 
-            
- 
 class Game:
     """ Game class handles the main loop and io."""
 
@@ -78,20 +78,20 @@ class Game:
             for x in range(GRID_LEN):
                 self.cells[(x, y)] = Cell((x, y))
 
-        #self.screen = pygame.display.set_mode((800, 600))
+        # self.screen = pygame.display.set_mode((800, 600))
 
         # uncomment following code to put a glider on the grid
         # useful for running game without input
         #
-        #self.cells[(5,5)].is_alive = True
-        #self.cells[(6,6)].is_alive = True
-        #self.cells[(6,7)].is_alive = True
-        #self.cells[(5,7)].is_alive = True
-        #self.cells[(4,7)].is_alive = True
+        # self.cells[(5,5)].is_alive = True
+        # self.cells[(6,6)].is_alive = True
+        # self.cells[(6,7)].is_alive = True
+        # self.cells[(5,7)].is_alive = True
+        # self.cells[(4,7)].is_alive = True
 
     def run(self) -> None:
         """Main loop of game.
-            
+
         Calls functions responsible for running game logic and drawing graphics every frame.
         """
         while True:
@@ -101,8 +101,8 @@ class Game:
     def check_cell_neighbors(self, cell: Cell) -> int:
         """ Checks how many neighbors are alive """
         living = 0
-        
-        top_cell = self.cells[cell.get_top_neighbor_loc()]       
+
+        top_cell = self.cells[cell.get_top_neighbor_loc()]
         top_left_cell = self.cells[top_cell.get_left_neighbor_loc()]
         top_right_cell = self.cells[top_cell.get_right_neighbor_loc()]
         bottom_cell = self.cells[cell.get_bottom_neighbor_loc()]
@@ -110,10 +110,9 @@ class Game:
         bottom_right_cell = self.cells[bottom_cell.get_right_neighbor_loc()]
         left_cell = self.cells[cell.get_left_neighbor_loc()]
         right_cell = self.cells[cell.get_right_neighbor_loc()]
-        
 
         living = len(list(filter(lambda x: x.is_alive, [
-            top_cell, 
+            top_cell,
             top_left_cell,
             top_right_cell,
             bottom_cell,
@@ -124,21 +123,20 @@ class Game:
         ])))
 
         return living
-        
 
     def process_game_logic(self):
         """Function for updating game logic every frame."""
 
-        changing = [] # references to all cells changing this frame and the outcome
+        changing = []  # references to all cells changing this frame and the outcome
 
         # for every cell check its neighbors and detirmine if its changing
         for cell in self.cells.values():
             living = self.check_cell_neighbors(cell)
-            if not (1 < living < 4): # death condition
+            if not (1 < living < 4):  # death condition
                 changing.append((cell, OperationFlag.KILL))
-            elif living == 3: # revive condition
+            elif living == 3:  # revive condition
                 changing.append((cell, OperationFlag.REVIVE))
-        
+
         # for every changing cell apply change
         for cell in changing:
             (cell, op) = cell
@@ -147,7 +145,7 @@ class Game:
                     cell.is_alive = False
                 case OperationFlag.REVIVE:
                     cell.is_alive = True
-    
+
     def draw_game_elements(self):
         """Method to draw to pygame screen every frame"""
         pass
@@ -158,20 +156,18 @@ class Game:
         for y in range(GRID_LEN):
             print("", end="")
             for x in range(GRID_LEN):
-                cell = self.cells[(x,y)]
+                cell = self.cells[(x, y)]
                 if cell.is_alive:
                     print(ALIVE, end="")
-                else: 
+                else:
                     print(DEAD, end="")
             print()
 
 
-
 if __name__ == "__main__":
     game = Game()
-    #game.run()
+    # game.run()
 
-    
     # Fake game loop for printing game to console
     while True:
         game.draw_in_console()
