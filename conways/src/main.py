@@ -1,11 +1,15 @@
 import pygame
 import time
 from os import system
+import sys
 from enum import Enum
 from typing import Tuple
 
+from pygame.rect import RectType
+
+
 # grid size is height and width of grid
-GRID_LEN = 20
+GRID_LEN = 1000
 GRID_LAST = GRID_LEN - 1
 
 # chars for printing game to console. change to something fun if you want!
@@ -78,16 +82,16 @@ class Game:
             for x in range(GRID_LEN):
                 self.cells[(x, y)] = Cell((x, y))
 
-        # self.screen = pygame.display.set_mode((800, 600))
+        self.screen = pygame.display.set_mode((1000, 1000))
 
         # uncomment following code to put a glider on the grid
         # useful for running game without input
-        #
-        # self.cells[(5,5)].is_alive = True
-        # self.cells[(6,6)].is_alive = True
-        # self.cells[(6,7)].is_alive = True
-        # self.cells[(5,7)].is_alive = True
-        # self.cells[(4,7)].is_alive = True
+        
+        self.cells[(5,5)].is_alive = True
+        self.cells[(6,6)].is_alive = True
+        self.cells[(6,7)].is_alive = True
+        self.cells[(5,7)].is_alive = True
+        self.cells[(4,7)].is_alive = True
 
     def run(self) -> None:
         """Main loop of game.
@@ -95,8 +99,9 @@ class Game:
         Calls functions responsible for running game logic and drawing graphics every frame.
         """
         while True:
-            self.process_game_logic()
             self.draw_game_elements()
+            self.process_game_logic()
+            
 
     def check_cell_neighbors(self, cell: Cell) -> int:
         """ Checks how many neighbors are alive """
@@ -148,6 +153,21 @@ class Game:
 
     def draw_game_elements(self):
         """Method to draw to pygame screen every frame"""
+        living_buf = list(filter(lambda cell: cell.is_alive, self.cells.values()))
+        color = 0xfffffff
+        
+        self.screen.fill((0,0,0))
+
+        for cell in living_buf:
+            x,y = cell.location()
+            rect = pygame.Rect(x*10,y*10, 10,10)
+            pygame.draw.rect(self.screen, color, rect)
+        pygame.display.flip()
+
+            
+            
+
+    def handle_input(self):
         pass
 
     def draw_in_console(self):
@@ -166,10 +186,10 @@ class Game:
 
 if __name__ == "__main__":
     game = Game()
-    # game.run()
+    game.run()
 
     # Fake game loop for printing game to console
-    while True:
-        game.draw_in_console()
-        game.process_game_logic()
-        time.sleep(0.1)
+    #while True:
+    #    game.draw_in_console()
+    #    game.process_game_logic()
+    #    time.sleep(0.1)
