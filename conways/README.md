@@ -2,6 +2,10 @@
 
 A clone of Life written in python and using pygame.
 
+## Playing the game
+
+
+
 ## The Rules
 
 1. A cell can be either "alive" or "dead"
@@ -15,12 +19,15 @@ Every generation every cell is checked against these condition to determine thei
 
 ### Every cell is represented by the `Cell` class.
 
-The class stores information about the cell's state and location. It also defines the capability to locate its neighbors that share a side with it (left, right, up, down).
+The class stores information about the cell's state and location. It also supplies a cell with the capability to locate its neighbors whoe share a side with it (left, right, up, down).
 
-### The games grid is a Torroidal Graph
+### Egocentric approach
+
+Because the cells can report their neighbors location we can take an approach where every cell's state is based on it's perspective of it's neighbors. In simpler terms, we can simply ask a cell and its imediate neighbors to tell us the sum of living cells in the field surrounding a location.
+
+### The "universe" of Life is an infinite grid of cells.
+
+Because we have to represent the grid with a fixed size in code we have to treat the grid as torroidal. To do so we simply wrap around the grid if the cell is on the border.
 
 
 
-## A Little Bit of History
-
-<p>Life is a facinating cellular automaton created in 1970 by the mathematician John Horton Conway. In an interview with the YouTube channel</p>
