@@ -19,7 +19,7 @@ Every generation every cell is checked against these condition to determine thei
 
 ### Cells
 
-Cells are simply alive or dead and can be asked for the location of the the neighbors with which they share a side (left, right, up, down).
+Cells are simply alive or dead and can be asked for the location of the neighbors with which they share a side (left, right, up, down).
 
 ### Egocentric approach
 
