@@ -21,10 +21,6 @@ Every generation every cell is checked against these condition to determine thei
 
 Cells are simply alive or dead and can be asked for the location of the neighbors with which they share a side (left, right, up, down).
 
-### Egocentric approach
-
-Because the cells can report their neighbors location we can take an approach where every cell's state is based on it's perspective of it's neighbors. In simpler terms, we can simply ask a cell and its imediate neighbors to tell us the sum of living cells in the field surrounding a location.
-
 ### The "universe" of Life is an infinite grid of cells.
 
 Because we have to represent the grid with a fixed size in code we have to treat the grid as torroidal. To do so we simply wrap around the grid if the cell is on the border.
