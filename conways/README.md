@@ -17,9 +17,9 @@ Every generation every cell is checked against these condition to determine thei
 
 ## How it works
 
-### Every cell is represented by the `Cell` class.
+### Cells
 
-The class stores information about the cell's state and location. It also supplies a cell with the capability to locate its neighbors whoe share a side with it (left, right, up, down).
+Cells are simply alive or dead and can be asked for the location of the the neighbors with which they share a side (left, right, up, down).
 
 ### Egocentric approach
 
