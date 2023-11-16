@@ -1,6 +1,6 @@
 import pygame
 import time
-from os import system
+from os import supports_effective_ids, system
 import sys
 from enum import Enum
 from typing import Tuple
@@ -8,14 +8,10 @@ from typing import Tuple
 
 SCREEN_SIZE = 1000
 
+file = open("log.txt", "w")
 # grid size is height and width of grid
-GRID_LEN = 200
+GRID_LEN = 1000
 GRID_LAST = GRID_LEN - 1
-
-# chars for printing game to console. change to something fun if you want!
-ALIVE = '⬜'
-DEAD = '⬛'
-
 
 class OperationFlag(Enum):
     """ Enum used when inserting references to cells into the list of changing 
@@ -40,38 +36,70 @@ class Cell:
     changing = []
 
     def __init__(self, location: Tuple[int, int]) -> None:
-        (self.x, self.y)= (x,y) = location
+        (self.x, self.y) = location
         self.living_neighbors = 0
-
+        x,y = self.x, self.y
         # calculate neighbor position at init
         ul_field = (-1, -1)
-        if x - 1 and y - 1 < 0:
+        if x - 1 < 0 and y - 1 < 0:
             ul_field = (GRID_LAST, GRID_LAST)
-        elif x - 1 < 0 and y - 1 > 0:
+        elif x - 1 < 0 and y - 1 >= 0:
             ul_field = (GRID_LAST, y - 1)
+        elif x - 1 >= 0 and y - 1 < 0:
+            ul_field = (x - 1, GRID_LAST)
         else:
             ul_field = (x - 1, y - 1)
 
+        ur_field = (-1, -1)
+        if x + 1 > GRID_LAST and y - 1 < 0:
+            ur_field = (0,GRID_LAST)
+        elif x + 1 > GRID_LAST and y - 1 >= 0:
+            ur_field = (0, y - 1)
+        elif x + 1 <= GRID_LAST and y - 1 < 0 :
+            ur_field = (x + 1, GRID_LAST)
+        else:
+            ur_field = (x + 1, y - 1)
+
+        bl_field = (-1, -1)
+        if x - 1 < 0 and y + 1 > GRID_LAST:
+            bl_field = (GRID_LAST, 0)
+        elif x - 1 < 0 and y + 1 <= GRID_LAST:
+            bl_field = (GRID_LAST, y + 1)
+        elif x - 1 >= 0 and y + 1 > GRID_LAST:
+            bl_field = (x - 1, 0)
+        else:
+            bl_field = (x - 1, y + 1)
+
+        br_field = (-1, -1)
+        if x + 1 > GRID_LAST and y + 1 > GRID_LAST:
+            br_field = (0, 0)
+        elif x + 1 > GRID_LAST and y + 1 <= GRID_LAST:
+            br_field = (0, y + 1)
+        elif x + 1 <= GRID_LAST and y + 1 > GRID_LAST:
+            br_field = (x + 1, 0)
+        else:
+            br_field = (x + 1, y + 1)
+
         self.neighbors = [
             ul_field,
-            (0, y) if x + 1 > GRID_LAST else (x + 1, y),
-            (self.x + 1, self.y + 1) if self.x + 1 <= GRID_LAST and self.y + 1 <= GRID_LAST else (0, 0), # bottom right corner
+            (0, y) if x + 1 > GRID_LAST else (x + 1, y), # right
+            ur_field,
             (x, 0) if y + 1 > GRID_LAST else (x, y + 1),  # bottom
-            ((GRID_LAST, 0) if x - 1 < 0 and y + 1 > GRID_LAST else (x - 1, y + 1)), # bottom left corner
+            bl_field,
             (x, GRID_LAST) if y - 1 < 0 else (x, y - 1),  # top
+            br_field,
             (GRID_LAST, y) if x - 1 < 0 else (x - 1, y)  # left
         ]
-        print("(",self.x,",",self.y,")", self.neighbors)
-        self.is_alive = False
         t = SCREEN_SIZE/GRID_LEN
+        self.is_alive = False
         self.rect = pygame.Rect(self.x * t, self.y * t, t, t)
         Cell.instances[location] = self
 
     def update(self):
-        if self.is_alive and not 2 <= self.living_neighbors < 4:
-            Cell.changing.append((self, OperationFlag.KILL))
-        elif not self.is_alive and self.living_neighbors == 3:
+        if (not self.is_alive) and self.living_neighbors == 3:
             Cell.changing.append((self, OperationFlag.REVIVE))
+        elif self.is_alive and (self.living_neighbors < 2 or self.living_neighbors > 3) :
+            Cell.changing.append((self, OperationFlag.KILL))
 
     def advance_generation():
         for cell, op in Cell.changing:
@@ -87,7 +115,11 @@ class Cell:
                 cell = Cell.instances[n]
                 if cell.living_neighbors > 0:
                     cell.living_neighbors -= 1
+            #Cell.instances[n].living_neighbors -= 1
             self.is_alive = False
+
+    def set_alive(self):
+        Cell.changing.append((self, OperationFlag.REVIVE))
 
     def revive(self):
         if not self.is_alive:
@@ -95,9 +127,15 @@ class Cell:
                 Cell.instances[n].living_neighbors += 1
             self.is_alive = True
 
-    def draw(self, screen):
+    def draw(self, screen): 
         color = 0xffffff if self.is_alive else 0x000000
-        pygame.draw.rect(screen, color, self.rect)
+        if not self.is_alive:
+            pygame.draw.rect(screen, color, self.rect)
+            #screen.blit(pygame.font.SysFont('Arial', 25).render(f"{self.living_neighbors}", True, (255,255,255)), (self.rect.x, self.rect.y))
+        else:
+            pygame.draw.rect(screen, color, self.rect)
+            #screen.blit(pygame.font.SysFont('Arial', 25).render(f"{self.living_neighbors}", True, (0,0,0)), (self.rect.x, self.rect.y))
+        pygame.display.update(self.rect)
 
     def location(self):
         return (self.x, self.y)
@@ -121,8 +159,7 @@ class Game:
         self.screen = pygame.display.set_mode((SCREEN_SIZE, SCREEN_SIZE))
 
         glider = [(5, 5), (6, 6), (6, 7), (5, 7), (4, 7)]
-
-        spaceship = [(113, 100), (116, 100), (117, 100), (124, 100), (127, 100), (128, 100), (129, 100), (105, 101), (109, 101), (110, 101), (111, 101), (112, 101), (114, 101), (115, 101), (116, 101), (117, 101), (118, 101), (119, 101), (124, 101), (127, 101), (128, 101), (129, 101), (101, 102), (102, 102), (103, 102), (104, 102), (105, 102), (110, 102), (115, 102), (120, 102), (121, 102), (122, 102), (100, 103), (107, 103), (108, 103), (110, 103), (117, 103), (118, 103), (120, 103), (121, 103), (122, 103), (125, 103), (127, 103), (128, 103), (129, 103), (101, 104), (102, 104), (103, 104), (104, 104), (105, 104), (107, 104), (108, 104), (109, 104), (118, 104), (119, 104), (120, 104), (121, 104), (125, 104), (127, 104), (128, 104), (129, 104), (105, 105), (108, 105), (123, 105), (108, 106), (109, 106), (120, 106), (121, 106), (123, 106), (124, 106), (108, 107), (109, 107), (120, 107), (121, 107), (123, 107), (124, 107), (105, 108), (108, 108), (123, 108), (101, 109), (102, 109), (103, 109), (104, 109), (105, 109), (107, 109), (108, 109), (109, 109), (118, 109), (119, 109), (120, 109), (121, 109), (125, 109), (127, 109), (128, 109), (129, 109), (100, 110), (107, 110), (108, 110), (110, 110), (117, 110), (118, 110), (120, 110), (121, 110), (122, 110), (125, 110), (127, 110), (128, 110), (129, 110), (101, 111), (102, 111), (103, 111), (104, 111), (105, 111), (110, 111), (115, 111), (120, 111), (121, 111), (122, 111), (105, 112), (109, 112), (110, 112), (111, 112), (112, 112), (114, 112), (115, 112), (116, 112), (117, 112), (118, 112), (119, 112), (124, 112), (127, 112), (128, 112), (129, 112), (113, 113), (116, 113), (117, 113), (124, 113), (127, 113), (128, 113), (129, 113)]
+        spaceship = [(34, 20), (37, 20), (38, 20), (45, 20), (48, 20), (49, 20), (50, 20), (26, 21), (30, 21), (31, 21), (32, 21), (33, 21), (35, 21), (36, 21), (37, 21), (38, 21), (39, 21), (40, 21), (45, 21), (48, 21), (49, 21), (50, 21), (22, 22), (23, 22), (24, 22), (25, 22), (26, 22), (31, 22), (36, 22), (41, 22), (42, 22), (43, 22), (21, 23), (28, 23), (29, 23), (31, 23), (38, 23), (39, 23), (41, 23), (42, 23), (43, 23), (46, 23), (48, 23), (49, 23), (50, 23), (22, 24), (23, 24), (24, 24), (25, 24), (26, 24), (28, 24), (29, 24), (30, 24), (39, 24), (40, 24), (41, 24), (42, 24), (46, 24), (48, 24), (49, 24), (50, 24), (26, 25), (29, 25), (44, 25), (29, 26), (30, 26), (41, 26), (42, 26), (44, 26), (45, 26), (29, 27), (30, 27), (41, 27), (42, 27), (44, 27), (45, 27), (26, 28), (29, 28), (44, 28), (22, 29), (23, 29), (24, 29), (25, 29), (26, 29), (28, 29), (29, 29), (30, 29), (39, 29), (40, 29), (41, 29), (42, 29), (46, 29), (48, 29), (49, 29), (50, 29), (21, 30), (28, 30), (29, 30), (31, 30), (38, 30), (39, 30), (41, 30), (42, 30), (43, 30), (46, 30), (48, 30), (49, 30), (50, 30), (22, 31), (23, 31), (24, 31), (25, 31), (26, 31), (31, 31), (36, 31), (41, 31), (42, 31), (43, 31), (26, 32), (30, 32), (31, 32), (32, 32), (33, 32), (35, 32), (36, 32), (37, 32), (38, 32), (39, 32), (40, 32), (45, 32), (48, 32), (49, 32), (50, 32), (34, 33), (37, 33), (38, 33), (45, 33), (48, 33), (49, 33), (50, 33)]
 
         # nested loop generates location, initializes a cell, and inserts it in the dict
         for y in range(GRID_LEN):
@@ -131,32 +168,32 @@ class Game:
         
         # puts a glider on the grid
         for cell in spaceship:
-            Cell.instances[cell].revive()
-
-
+            Cell.instances[cell].set_alive()
+        
     def run(self) -> None:
         """Main loop of game.
 
         Calls functions responsible for running game logic and drawing graphics every frame.
         """
         while True:
-            self.draw_game_elements()
             self.process_game_logic()
-            input()
+            self.draw_game_elements()
 
     def process_game_logic(self):
         """Function for updating game logic every frame."""
-
         for cell in Cell.instances.values():
             cell.update()
         Cell.advance_generation()
+        
+        #file = open("log.txt", 'w')
+        #for loc, cell in Cell.instances.items():
+        #    file.write(f"CELL: {loc}:{cell.is_alive}: {cell.neighbors}:{cell.living_neighbors}\n")
 
     def draw_game_elements(self):
         """Method to draw to pygame screen every frame"""
         while len(Cell.changing) > 0:
             cell, _ = Cell.changing.pop(0)
             cell.draw(self.screen)
-            pygame.display.update(cell.rect)
 
     def handle_input(self):
         pass
