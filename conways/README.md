@@ -4,6 +4,7 @@ A clone of Life written in python and using pygame.
 
 ## Playing the game
 
+Simply run `./src/main` to launch the current demo. If you want to see another demo you will have to edit line 189 of the script to a different key.
 
 
 ## The Rules
@@ -19,11 +20,25 @@ Every generation every cell is checked against these condition to determine thei
 
 ### Cells
 
-Cells are simply alive or dead and can be asked for the location of the neighbors with which they share a side (left, right, up, down).
+Cells are simply alive or dead, know where their neighbors are, and how to direct their updates based on the number of living neighbors they have. They can also draw themselves. Living neighbors are calculated on a revive or death even for all neighbors of the changing cell. The `Cells` class is responsible for doing group operations on the cell and contains all the cells for a grid.
 
 ### The "universe" of Life is an infinite grid of cells.
 
 Because we have to represent the grid with a fixed size in code we have to treat the grid as torroidal. To do so we simply wrap around the grid if the cell is on the border.
+
+## Things To Work On:
+To me these are the things that would take this project up a notch.
+### UI
+- the ability to control generation speed
+- ability to set cells alive on click
+- GUI like tkinter
+- scrolling/zooming
+### Features
+- Stepping through generations
+- play/pause
+- import/export presets
+- library of presets
+- real time grid resizing
 
 
 
