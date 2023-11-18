@@ -6,10 +6,27 @@ import os
 
 TOP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
-ROTATION_SPEED = 100
+SCREEN_WIDTH = 960
+SCREEN_HEIGHT = 720
+
+ROTATION_SPEED = 200
 VELOCITY_INCREASE_ON_KEYPRESS = 10
 CONSTANT_DECELERATION = 1 # should probably be lower than max speed
 MAX_SPEED = 5
+
+
+class BaseClassMovement:
+    pass
+class Missles:
+    pass
+class Astroid:
+    pass
+class GameManager:
+    pass
+class AudioManager:
+    pass
+class ScreenManager:
+    pass
 
 class Ship:
 # TODO: Split into higher level class that takes in asset as argument (?) to simplify making asteroids
@@ -30,6 +47,27 @@ class Ship:
         self.total_sprite_rotation = 0 # degrees
         self.constant_deceleration = CONSTANT_DECELERATION
 
+    # def translate_within_borders(self):
+    #     self.
+    
+    def within_borders(self):
+        pass
+        # print(self.pos)
+        # rotated_rect = self.displayed_sprite.get_rect()
+        # print(rotated_rect)
+        pad = 10
+        if self.pos.x + self.sprite_rect.right + pad < 0: # left
+            print("left!")
+            self.pos = pygame.Vector2(SCREEN_WIDTH, self.pos.y)
+        elif self.pos.x - pad > SCREEN_WIDTH: # right
+            print("right")
+            self.pos = pygame.Vector2(0, self.pos[1])
+        elif self.pos.y + pad + self.sprite_rect.bottom < 0: # top
+            print("top!")
+            self.pos = pygame.Vector2(self.pos.x, SCREEN_HEIGHT)
+        elif self.pos.y - pad > SCREEN_HEIGHT: # bottom
+            self.pos = pygame.Vector2(self.pos.x, 0)
+
     def rotate_sprite(self):
         self.displayed_sprite = pygame.transform.rotate(self.sprite, self.total_sprite_rotation)
 
@@ -49,7 +87,7 @@ class Ship:
     def change_velocity_vector(self, amount):
         change_vector = self.calc_vector_from_ship_direction(amount)
         self.velocity_vector += change_vector
-        self.velocity_vector = self.velocity_vector.clamp_magnitude(0, MAX_SPEED)
+        self.velocity_vector = self.velocity_vector.clamp_magnitude(MAX_SPEED)
 
     def calc_acceleration_vector(self, amount):
         if self.velocity_vector.magnitude() > 0:
@@ -75,7 +113,7 @@ class Game:
         """Init Game with initial pygame, display caption, and display size."""
         pygame.init()
         pygame.display.set_caption(title)
-        self.screen = pygame.display.set_mode((960, 720))
+        self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.dt = 0 # delta time
         self.clock = pygame.time.Clock()
         self.ship = Ship(self.screen)
@@ -100,8 +138,8 @@ class Game:
         
         if keys[pygame.K_w]:
             self.ship.change_velocity_vector(VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
-        if keys[pygame.K_s]:
-            self.ship.change_velocity_vector(-1 * VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
+        # if keys[pygame.K_s]:
+        #     self.ship.change_velocity_vector(-1 * VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
         if keys[pygame.K_LEFT]:
             self.ship.rotate(ROTATION_SPEED * self.dt)
         if keys[pygame.K_RIGHT]:
@@ -111,6 +149,7 @@ class Game:
         """Implement and update docstring and return type"""
         self.ship.move_forward()
         self.ship.slow_down(self.dt * CONSTANT_DECELERATION)
+        self.ship.within_borders()
 
     def draw_game_elements(self):
         """Implement and update docstring and return type"""
