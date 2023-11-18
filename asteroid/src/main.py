@@ -7,14 +7,14 @@ import os
 TOP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 
 ROTATION_SPEED = 100
-VELOCITY_INCREASE_ON_KEYPRESS = 20
-CONSTANT_DECELERATION = -30
-
+VELOCITY_INCREASE_ON_KEYPRESS = 10
+CONSTANT_DECELERATION = 1 # should probably be lower than max speed
+MAX_SPEED = 5
 
 class Ship:
-# TODO: Split into higher level class that takes in asset as argument (?)
+# TODO: Split into higher level class that takes in asset as argument (?) to simplify making asteroids
     __slots__ = 'screen', 'pos', 'sprite', 'displayed_sprite', 'sprite_rect', 'direction', \
-                'velocity_magnitude', 'velocity_direction', 'total_sprite_rotation', 'constant_deceleration'
+                'velocity_vector', 'velocity_direction', 'total_sprite_rotation', 'constant_deceleration'
     def __init__(self, screen):
         self.screen = screen
         self.sprite = pygame.image.load(os.path.join(TOP_DIR, 'assets/ship.png'))
@@ -24,9 +24,8 @@ class Ship:
         starting_x = (screen.get_width() / 2) - self.sprite.get_rect().centerx
         starting_y = (screen.get_height() / 2) - self.sprite.get_rect().centery
         self.pos = pygame.Vector2(starting_x, starting_y)
-        self.direction = math.pi / 2 # radians
-        self.velocity_direction = self.direction # radians
-        self.velocity_magnitude = 0
+        self.direction = math.pi / 2 # radians. should be the same starting angle of the sprite
+        self.velocity_vector = pygame.Vector2(0, 0)
         
         self.total_sprite_rotation = 0 # degrees
         self.constant_deceleration = CONSTANT_DECELERATION
@@ -39,20 +38,29 @@ class Ship:
         self.total_sprite_rotation += angle
         self.rotate_sprite()
 
-    def calc_vector_from_angle_and_magnitude(self, magnitude):
+    def calc_vector_from_ship_direction(self, magnitude):
         x = magnitude * math.cos(self.direction)
         y = magnitude * -1 * math.sin(self.direction) # because y=0 is at the top of the screen
         return pygame.Vector2(x, y)
 
-    def move_forward(self, amount):
-        pos_change_vector = self.calc_vector_from_angle_and_magnitude(amount)
-        self.pos += pos_change_vector
+    def move_forward(self):
+        self.pos += self.velocity_vector
 
-    def slow_down(self, dt):
-        self.velocity_magnitude += self.constant_deceleration * dt
-        if self.velocity_magnitude < 0:
-            self.velocity_magnitude = 0
+    def change_velocity_vector(self, amount):
+        change_vector = self.calc_vector_from_ship_direction(amount)
+        self.velocity_vector += change_vector
+        self.velocity_vector = self.velocity_vector.clamp_magnitude(0, MAX_SPEED)
 
+    def calc_acceleration_vector(self, amount):
+        if self.velocity_vector.magnitude() > 0:
+            acceleration_vector = self.velocity_vector.normalize() * amount
+            return acceleration_vector
+        else:
+            return pygame.Vector2(0, 0)
+
+    def slow_down(self, amount):
+        acceleration_vector = self.calc_acceleration_vector(amount * -1)
+        self.velocity_vector += acceleration_vector
     
 
 class Game:
@@ -91,9 +99,9 @@ class Game:
         keys = pygame.key.get_pressed()
         
         if keys[pygame.K_w]:
-            self.ship.velocity_magnitude += VELOCITY_INCREASE_ON_KEYPRESS
+            self.ship.change_velocity_vector(VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
         if keys[pygame.K_s]:
-            self.ship.velocity_magnitude -= VELOCITY_INCREASE_ON_KEYPRESS
+            self.ship.change_velocity_vector(-1 * VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
         if keys[pygame.K_LEFT]:
             self.ship.rotate(ROTATION_SPEED * self.dt)
         if keys[pygame.K_RIGHT]:
@@ -101,8 +109,8 @@ class Game:
 
     def process_game_logic(self):
         """Implement and update docstring and return type"""
-        self.ship.move_forward(self.ship.velocity_magnitude * self.dt)
-        self.ship.slow_down(self.dt)
+        self.ship.move_forward()
+        self.ship.slow_down(self.dt * CONSTANT_DECELERATION)
 
     def draw_game_elements(self):
         """Implement and update docstring and return type"""
