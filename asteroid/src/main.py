@@ -3,23 +3,33 @@ import pygame
 from time import sleep 
 import math
 import os
+
 TOP_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+
+ROTATION_SPEED = 100
+VELOCITY_INCREASE_ON_KEYPRESS = 20
+CONSTANT_DECELERATION = -30
+
 
 class Ship:
 # TODO: Split into higher level class that takes in asset as argument (?)
-    __slots__ = 'screen', 'pos', 'sprite', 'displayed_sprite', 'sprite_rect', \
-                'velocity_magnitude', 'direction', 'total_sprite_rotation', 'constant_deceleration'
+    __slots__ = 'screen', 'pos', 'sprite', 'displayed_sprite', 'sprite_rect', 'direction', \
+                'velocity_magnitude', 'velocity_direction', 'total_sprite_rotation', 'constant_deceleration'
     def __init__(self, screen):
         self.screen = screen
         self.sprite = pygame.image.load(os.path.join(TOP_DIR, 'assets/ship.png'))
         self.displayed_sprite = self.sprite
         self.sprite_rect = self.sprite.get_rect()
         
-        self.pos = pygame.Vector2((screen.get_width() / 2) - self.sprite.get_rect().centerx, (screen.get_height() / 2) - self.sprite.get_rect().centery)
-        self.velocity_magnitude = 0
+        starting_x = (screen.get_width() / 2) - self.sprite.get_rect().centerx
+        starting_y = (screen.get_height() / 2) - self.sprite.get_rect().centery
+        self.pos = pygame.Vector2(starting_x, starting_y)
         self.direction = math.pi / 2 # radians
+        self.velocity_direction = self.direction # radians
+        self.velocity_magnitude = 0
+        
         self.total_sprite_rotation = 0 # degrees
-        self.constant_deceleration = -10
+        self.constant_deceleration = CONSTANT_DECELERATION
 
     def rotate_sprite(self):
         self.displayed_sprite = pygame.transform.rotate(self.sprite, self.total_sprite_rotation)
@@ -31,7 +41,7 @@ class Ship:
 
     def calc_vector_from_angle_and_magnitude(self, magnitude):
         x = magnitude * math.cos(self.direction)
-        y = magnitude * -1 * math.sin(self.direction)
+        y = magnitude * -1 * math.sin(self.direction) # because y=0 is at the top of the screen
         return pygame.Vector2(x, y)
 
     def move_forward(self, amount):
@@ -78,26 +88,21 @@ class Game:
                 pygame.quit()
                 quit()
 
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_w:
-                    self.ship.velocity_magnitude += 20
-                if event.key == pygame.K_s:
-                    self.ship.velocity_magnitude -= 20
-                if event.key == pygame.K_LEFT:
-                    self.ship.rotate(30)
-                if event.key == pygame.K_RIGHT:
-                    self.ship.rotate(-30)
+        keys = pygame.key.get_pressed()
+        
+        if keys[pygame.K_w]:
+            self.ship.velocity_magnitude += VELOCITY_INCREASE_ON_KEYPRESS
+        if keys[pygame.K_s]:
+            self.ship.velocity_magnitude -= VELOCITY_INCREASE_ON_KEYPRESS
+        if keys[pygame.K_LEFT]:
+            self.ship.rotate(ROTATION_SPEED * self.dt)
+        if keys[pygame.K_RIGHT]:
+            self.ship.rotate(-1 * ROTATION_SPEED * self.dt)
 
     def process_game_logic(self):
         """Implement and update docstring and return type"""
-        # self.ship.pos = self.ship.pos.move_towards(pygame.mouse.get_pos(), 1000 * self.dt)
-        # print(self.dt)
         self.ship.move_forward(self.ship.velocity_magnitude * self.dt)
         self.ship.slow_down(self.dt)
-        # if self.ship.velocity_magnitude:
-        #     self.ship.move_forward(self.ship.velocity_magnitude)
-        #     self.ship.slow_down()
-        # pass
 
     def draw_game_elements(self):
         """Implement and update docstring and return type"""
