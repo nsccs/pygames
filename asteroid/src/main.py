@@ -146,7 +146,7 @@ class Game:
             # use delta time, which is the amount of time that has passed between each frame.
             # this allows behaviour like velocity to be based on actual time passed instead of the amount of frames.
             seconds_per_millisecond = 1000
-            self.dt = self.clock.tick(FRAME_RATE) / seconds_per_millisecond
+            self.dt = self.clock.tick(FRAME_RATE) / seconds_per_millisecond # NOTE: not currently used
 
 
     def handle_input(self):
