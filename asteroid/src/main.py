@@ -77,10 +77,7 @@ class Ship:
         return pygame.Vector2(x, y)
 
     def add_forward_velocity(self, amount: float | int):
-        """
-        Adds 'amount' to the ship's velocity in the same direction it's currently facing.
-
-        """
+        """Adds 'amount' to the ship's velocity in the same direction it's currently facing."""
         forward_velocity_vector = self.calc_forward_facing_velocity(amount)
         self.velocity_vector += forward_velocity_vector
         self.velocity_vector = self.velocity_vector.clamp_magnitude(MAX_SPEED)
