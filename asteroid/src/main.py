@@ -167,10 +167,6 @@ class Game:
             self.ship.rotate(ROTATION_SPEED)
         if keys[pygame.K_RIGHT]:
             self.ship.rotate(-1 * ROTATION_SPEED)
-        if keys[pygame.K_UP]:
-            self.ship.add_forward_velocity(VELOCITY_INCREASE_ON_KEYPRESS)
-        if keys[pygame.K_DOWN]:
-            self.ship.slow_down(CONSTANT_DECELERATION)
         if keys[pygame.K_ESCAPE] or keys[pygame.K_q]:
             pygame.quit()
             quit()
