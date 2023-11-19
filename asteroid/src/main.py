@@ -22,10 +22,13 @@ SCREEN_WIDTH = 960
 SCREEN_HEIGHT = 720
 FRAME_RATE = 60
 
-ROTATION_SPEED = 200
-VELOCITY_INCREASE_ON_KEYPRESS = 10
-CONSTANT_DECELERATION = 1 # should probably be lower than max speed
-MAX_SPEED = 5
+APPROX_TIME_PER_FRAME = round(1 / FRAME_RATE, 3)
+
+# These constants are used a lot so it seems faster to not have to multiply them by delta time every frame.
+ROTATION_SPEED = 200 * APPROX_TIME_PER_FRAME
+CONSTANT_DECELERATION = 1 * APPROX_TIME_PER_FRAME
+MAX_SPEED = 300 * APPROX_TIME_PER_FRAME
+VELOCITY_INCREASE_ON_KEYPRESS = 10 * APPROX_TIME_PER_FRAME
 
 def rot_center(image, angle):
     """
@@ -42,11 +45,12 @@ def rot_center(image, angle):
 class Ship:
 # TODO: Split into higher level class that takes in asset as argument to simplify making asteroids, which share a lot of behaviour
     __slots__ = 'screen', 'pos', 'sprite', 'displayed_sprite', 'hitbox', 'direction', \
-                'velocity_vector', 'velocity_direction', 'total_sprite_rotation', 'constant_deceleration'
+                'velocity_vector', 'total_sprite_rotation'
     def __init__(self, screen):
         self.screen = screen
+        # the sprite has to be square to allow rotation around its center, so the hitbox is an image with smaller dimensions
         self.sprite = pygame.image.load(os.path.join(TOP_DIR, 'assets/ship.png'))
-        self.displayed_sprite = self.sprite
+        self.displayed_sprite = self.sprite # this variable allows the original sprite to be maintained when the ship rotates
         self.hitbox = pygame.image.load(os.path.join(TOP_DIR, 'assets/shiphitbox.png')).get_rect()
         
         starting_x = (screen.get_width() / 2) - self.sprite.get_rect().centerx
@@ -56,8 +60,48 @@ class Ship:
         self.velocity_vector = pygame.Vector2(0, 0)
         
         self.total_sprite_rotation = 0 # degrees
-        self.constant_deceleration = CONSTANT_DECELERATION
-    
+
+    def rotate_sprite(self):
+        self.displayed_sprite = rot_center(self.sprite, self.total_sprite_rotation)
+
+    def rotate(self, angle: float | int):
+        """Rotate ship 'angle' degrees"""
+        self.direction += math.radians(angle)
+        self.total_sprite_rotation += angle
+        self.rotate_sprite()
+
+    def calc_forward_facing_velocity(self, magnitude: float | int) -> pygame.Vector2:
+        """Creates a Vector2 in the direction the ship is facing with magnitude 'magnitude'."""
+        x = magnitude * math.cos(self.direction)
+        y = magnitude * -1 * math.sin(self.direction) # because y=0 is at the top of the screen
+        return pygame.Vector2(x, y)
+
+    def add_forward_velocity(self, amount: float | int):
+        """
+        Adds 'amount' to the ship's velocity in the same direction it's currently facing.
+
+        """
+        forward_velocity_vector = self.calc_forward_facing_velocity(amount)
+        self.velocity_vector += forward_velocity_vector
+        self.velocity_vector = self.velocity_vector.clamp_magnitude(MAX_SPEED)
+        # print(MAX_SPEED * dt)
+
+    def move(self):
+        """Moves the ship by its velocity."""
+        self.pos += self.velocity_vector
+
+    def calc_drag(self, magnitude: float | int) -> pygame.Vector2:
+        """Find a vector that's the opposite of the ship's velocity vector in order t"""
+        if self.velocity_vector.magnitude() > 0:
+            acceleration_vector = self.velocity_vector.normalize() * magnitude * -1 # -1 makes it the opposite direction of the velocity
+            return acceleration_vector
+        else:
+            return pygame.Vector2(0, 0)
+
+    def slow_down(self, magnitude: float | int):
+        drag_vector = self.calc_drag(magnitude)
+        self.velocity_vector += drag_vector
+
     def keep_within_borders(self):
         # have to use hitbox in some cases because center of pos is on the top left of ship sprite
         pad = 10
@@ -73,50 +117,6 @@ class Ship:
         # bottom
         elif self.pos.y - pad > SCREEN_HEIGHT:
             self.pos = pygame.Vector2(self.pos.x, 0)
-
-    def rotate_sprite(self):
-        self.displayed_sprite = rot_center(self.sprite, self.total_sprite_rotation)
-
-    def rotate(self, angle):
-        self.direction += math.radians(angle)
-        self.total_sprite_rotation += angle
-        self.rotate_sprite()
-
-    def calc_forward_facing_velocity(self, magnitude: float | int) -> pygame.Vector2:
-        """
-        Creates a Vector2 in the direction the ship is facing with magnitude 'magnitude'.
-        """
-        x = magnitude * math.cos(self.direction)
-        y = magnitude * -1 * math.sin(self.direction) # because y=0 is at the top of the screen
-        return pygame.Vector2(x, y)
-
-    def add_forward_velocity(self, amount):
-        """
-        Adds 'amount' to the ship's velocity in the same direction it's currently facing.
-        """
-        forward_velocity_vector = self.calc_forward_facing_velocity(amount)
-        self.velocity_vector += forward_velocity_vector
-        self.velocity_vector = self.velocity_vector.clamp_magnitude(MAX_SPEED)
-
-    def move(self):
-        """
-        Moves the ship by its velocity.
-        """
-        self.pos += self.velocity_vector
-
-    def calc_drag(self, magnitude):
-        """
-        Find a vector that's the opposite of the ship's velocity vector in order t
-        """
-        if self.velocity_vector.magnitude() > 0:
-            acceleration_vector = self.velocity_vector.normalize() * magnitude * -1 # -1 makes it the opposite direction of the velocity
-            return acceleration_vector
-        else:
-            return pygame.Vector2(0, 0)
-
-    def slow_down(self, magnitude):
-        drag_vector = self.calc_drag(magnitude)
-        self.velocity_vector += drag_vector
     
 
 class Game:
@@ -160,15 +160,16 @@ class Game:
         keys = pygame.key.get_pressed()
         if keys[pygame.K_w]:
             # multiply by dt to make the increase based on the amount of time that has passed between frames
-            self.ship.add_forward_velocity(VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
+            self.ship.add_forward_velocity(VELOCITY_INCREASE_ON_KEYPRESS)
+            # print(VELOCITY_INCREASE_ON_KEYPRESS * self.dt)
         if keys[pygame.K_LEFT]:
-            self.ship.rotate(ROTATION_SPEED * self.dt)
+            self.ship.rotate(ROTATION_SPEED)
         if keys[pygame.K_RIGHT]:
-            self.ship.rotate(-1 * ROTATION_SPEED * self.dt)
+            self.ship.rotate(-1 * ROTATION_SPEED)
 
     def process_game_logic(self):
         self.ship.move()
-        self.ship.slow_down(self.dt * CONSTANT_DECELERATION)
+        self.ship.slow_down(CONSTANT_DECELERATION)
         self.ship.keep_within_borders()
 
     def draw_game_elements(self):
