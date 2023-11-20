@@ -1,6 +1,7 @@
 from typing import List
 import pygame
 import math
+import random
 from image_loader import ImageLoader
 
 """
@@ -32,6 +33,7 @@ ROTATION_SPEED = 200 * APPROX_TIME_PER_FRAME
 CONSTANT_DECELERATION = 1 * APPROX_TIME_PER_FRAME
 MAX_SPEED = 300 * APPROX_TIME_PER_FRAME
 VELOCITY_INCREASE_ON_KEYPRESS = 10 * APPROX_TIME_PER_FRAME
+SPAWN_ASTROID = pygame.USEREVENT + 1
 
 
 def rot_center(image, angle):
@@ -112,8 +114,6 @@ class Entity:
         )  # because y=0 is at the top of the screen
         return pygame.Vector2(x, y)
 
-
-
     def add_forward_velocity(self, amount: float | int):
         """Adds 'amount' to the entity's velocity in the same direction it's currently facing."""
         forward_velocity_vector = self.calc_forward_facing_velocity(amount)
@@ -159,7 +159,7 @@ class Entity:
 class Game:
     """Game class encapsulates functionality to make the game run."""
 
-    __slots__ = 'screen', 'dt', 'clock', 'ship', 'projectiles'
+    __slots__ = "screen", "dt", "clock", "ship", "projectiles", "asteroids"
 
     def __init__(self, title: str = "NSCCSC Asteroid Clone") -> None:
         """Init Game with initial pygame, display caption, and display size."""
@@ -171,8 +171,10 @@ class Game:
         self.clock = pygame.time.Clock()
         self.ship = Entity(self.screen, "assets/ship.png", "assets/shiphitbox.png")
         self.projectiles: List[Projectile] = []
+        self.asteroids: List[Entity] = []
 
     def run(self) -> None:
+        pygame.time.set_timer(SPAWN_ASTROID, 2500)
         while True:
             self.handle_input()
             self.process_game_logic()
@@ -181,7 +183,9 @@ class Game:
             # use delta time, which is the amount of time that has passed between each frame.
             # this allows behaviour like velocity to be based on actual time passed instead of the amount of frames.
             seconds_per_millisecond = 1000
-            self.dt = self.clock.tick(FRAME_RATE) / seconds_per_millisecond  # NOTE: not currently used
+            self.dt = (
+                self.clock.tick(FRAME_RATE) / seconds_per_millisecond
+            )  # NOTE: not currently used
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -189,6 +193,18 @@ class Game:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
+            if event.type == SPAWN_ASTROID:
+                asteroid = Entity(
+                    self.screen, "assets/asteroid.png", "assets/asteroidhitbox.png"
+                )
+
+                asteroid.pos = (
+                    random.randint(0, SCREEN_WIDTH),
+                    random.randint(0, SCREEN_HEIGHT),
+                )
+                asteroid.rotate(random.randint(0, 359))
+                asteroid.add_forward_velocity(0.8)
+                self.asteroids.append(asteroid)
 
         # check for keys within get_pressed() to continuously check which keys are pressed
         keys = pygame.key.get_pressed()
@@ -217,12 +233,23 @@ class Game:
         self.ship.slow_down(CONSTANT_DECELERATION)
         self.ship.keep_within_borders()
         self.move_projectiles()
+        self.move_asteroids()
 
     def draw_game_elements(self):
         self.screen.fill((0, 0, 0))
         self.screen.blit(self.ship.displayed_sprite, self.ship.pos)
         self.draw_projectiles()
+        self.draw_asteroids()
         pygame.display.flip()
+
+    def move_asteroids(self):
+        for a in self.asteroids:
+            a.move()
+            a.keep_within_borders()
+
+    def draw_asteroids(self):
+        for a in self.asteroids:
+            self.screen.blit(a.sprite, a.pos)
 
     def move_projectiles(self):
         for p in self.projectiles:
