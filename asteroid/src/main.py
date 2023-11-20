@@ -1,3 +1,4 @@
+from typing import List
 import pygame
 import math
 from image_loader import ImageLoader
@@ -45,6 +46,17 @@ def rot_center(image, angle):
     rot_image = rot_image.subsurface(rot_rect).copy()
     return rot_image
 
+class Projectile:
+    __slots__ = ('pos', 'direction', 'velocity_vector', 'rotation', 'sprite', 'cleanup')
+
+    def __init__(self, pos, direction, velocity_vector, rotation):
+        self.pos = pos.copy()
+        self.direction = direction
+        self.velocity_vector = velocity_vector.copy()
+        self.cleanup = False
+        self.sprite = rot_center(ImageLoader.load_sprite("assets/projectile.png"), rotation)
+        
+        
 
 class Ship:
     # TODO: Split into higher level class that takes in asset as argument to simplify making asteroids, which share a lot of behaviour
@@ -61,6 +73,7 @@ class Ship:
         self.sprite = ImageLoader.load_sprite('assets/ship.png')
         self.displayed_sprite = self.sprite  # this variable allows the original sprite to be maintained when the ship rotates
         self.hitbox = ImageLoader.load_sprite('assets/shiphitbox.png').get_rect()
+
 
         starting_x = (screen.get_width() / 2) - self.sprite.get_rect().centerx
         starting_y = (screen.get_height() / 2) - self.sprite.get_rect().centery
@@ -84,6 +97,8 @@ class Ship:
         x = magnitude * math.cos(self.direction)
         y = magnitude * -1 * math.sin(self.direction)  # because y=0 is at the top of the screen
         return pygame.Vector2(x, y)
+
+
 
     def add_forward_velocity(self, amount: float | int):
         """Adds 'amount' to the ship's velocity in the same direction it's currently facing."""
@@ -128,7 +143,7 @@ class Ship:
 class Game:
     """Game class encapsulates functionality to make the game run."""
 
-    __slots__ = 'screen', 'dt', 'clock', 'ship'
+    __slots__ = 'screen', 'dt', 'clock', 'ship', 'projectiles'
 
     def __init__(self, title: str = "NSCCSC Asteroid Clone") -> None:
         """Init Game with initial pygame, display caption, and display size."""
@@ -139,6 +154,7 @@ class Game:
         self.dt = 0  # delta time
         self.clock = pygame.time.Clock()
         self.ship = Ship(self.screen)
+        self.projectiles: List[Projectile] = []
 
     def run(self) -> None:
         while True:
@@ -160,6 +176,8 @@ class Game:
 
         # check for keys within get_pressed() to continuously check which keys are pressed
         keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.projectiles.append(Projectile(self.ship.pos, self.ship.direction, self.ship.calc_forward_facing_velocity(1), self.ship.total_sprite_rotation))
         if keys[pygame.K_w]:
             # multiply by dt to make the increase based on the amount of time that has passed between frames
             self.ship.add_forward_velocity(VELOCITY_INCREASE_ON_KEYPRESS)
@@ -175,12 +193,29 @@ class Game:
         self.ship.move()
         self.ship.slow_down(CONSTANT_DECELERATION)
         self.ship.keep_within_borders()
+        self.move_projectiles()
 
     def draw_game_elements(self):
         self.screen.fill((0, 0, 0))
         self.screen.blit(self.ship.displayed_sprite, self.ship.pos)
+        self.draw_projectiles()
         pygame.display.flip()
 
+    def move_projectiles(self):
+        for p in self.projectiles:
+                    if p.pos.x  < 0 or p.pos.x > SCREEN_WIDTH:
+                        p.cleanup = True
+                    elif p.pos.y < 0 or p.pos.y > SCREEN_HEIGHT:
+                        p.cleanup = True
+                    p.pos += p.velocity_vector
+
+    def cleanup_projectiles(self):
+        self.projectiles = list(filter(lambda p: p.cleanup == False, self.projectiles))
+
+    def draw_projectiles(self):
+        self.cleanup_projectiles()
+        for p in self.projectiles:
+            self.screen.blit(p.sprite, p.pos)
 
 if __name__ == "__main__":
     game = Game()
