@@ -1,5 +1,7 @@
+from typing import List
 import pygame
 import math
+import random
 from image_loader import ImageLoader
 
 """
@@ -31,6 +33,7 @@ ROTATION_SPEED = 200 * APPROX_TIME_PER_FRAME
 CONSTANT_DECELERATION = 1 * APPROX_TIME_PER_FRAME
 MAX_SPEED = 300 * APPROX_TIME_PER_FRAME
 VELOCITY_INCREASE_ON_KEYPRESS = 10 * APPROX_TIME_PER_FRAME
+SPAWN_ASTROID = pygame.USEREVENT + 1
 
 
 def rot_center(image, angle):
@@ -46,26 +49,50 @@ def rot_center(image, angle):
     return rot_image
 
 
-class Ship:
-    # TODO: Split into higher level class that takes in asset as argument to simplify making asteroids, which share a lot of behaviour
-    __slots__ = ('screen', 'pos', 'sprite', 'displayed_sprite', 'hitbox', 'direction',
-                 'velocity_vector', 'total_sprite_rotation')
+class Projectile:
+    __slots__ = ("pos", "direction", "velocity_vector", "rotation", "sprite", "cleanup")
 
-    def __init__(self, screen):
+    def __init__(self, pos, direction, velocity_vector, rotation):
+        self.pos = pos.copy()
+        self.direction = direction
+        self.velocity_vector = velocity_vector.copy()
+        self.cleanup = False
+        self.sprite = rot_center(
+            ImageLoader.load_sprite("assets/projectile.png"), rotation
+        )
+
+
+class Entity:
+    __slots__ = (
+        "screen",
+        "pos",
+        "sprite",
+        "displayed_sprite",
+        "hitbox",
+        "direction",
+        "velocity_vector",
+        "total_sprite_rotation",
+    )
+
+    def __init__(self, screen, sprite, hitbox):
         """
-        Init ship with screen size, image representation, hit box, starting coordinates, start direction,
+        Init entity with screen size, image representation, hit box, starting coordinates, start direction,
         velocity vector, and total sprite rotation.
         """
         self.screen = screen
         # the sprite has to be square to allow rotation around its center, so the hitbox is an image with smaller dimensions
-        self.sprite = ImageLoader.load_sprite('assets/ship.png')
-        self.displayed_sprite = self.sprite  # this variable allows the original sprite to be maintained when the ship rotates
-        self.hitbox = ImageLoader.load_sprite('assets/shiphitbox.png').get_rect()
+        self.sprite = ImageLoader.load_sprite(sprite)
+        self.displayed_sprite = (
+            self.sprite
+        )  # this variable allows the original sprite to be maintained when the entity rotates
+        self.hitbox = ImageLoader.load_sprite(hitbox).get_rect()
 
         starting_x = (screen.get_width() / 2) - self.sprite.get_rect().centerx
         starting_y = (screen.get_height() / 2) - self.sprite.get_rect().centery
         self.pos = pygame.Vector2(starting_x, starting_y)
-        self.direction = math.pi / 2  # radians. should be the same starting angle of the sprite
+        self.direction = (
+            math.pi / 2
+        )  # radians. should be the same starting angle of the sprite
         self.velocity_vector = pygame.Vector2(0, 0)
         self.total_sprite_rotation = 0  # degrees
 
@@ -74,19 +101,21 @@ class Ship:
         self.displayed_sprite = rot_center(self.sprite, self.total_sprite_rotation)
 
     def rotate(self, angle: float | int):
-        """Rotate ship 'angle' degrees"""
+        """Rotate entity 'angle' degrees"""
         self.direction += math.radians(angle)
         self.total_sprite_rotation += angle
         self.rotate_sprite()
 
     def calc_forward_facing_velocity(self, magnitude: float | int) -> pygame.Vector2:
-        """Creates a Vector2 in the direction the ship is facing with magnitude 'magnitude'."""
+        """Creates a Vector2 in the direction the entity is facing with magnitude 'magnitude'."""
         x = magnitude * math.cos(self.direction)
-        y = magnitude * -1 * math.sin(self.direction)  # because y=0 is at the top of the screen
+        y = (
+            magnitude * -1 * math.sin(self.direction)
+        )  # because y=0 is at the top of the screen
         return pygame.Vector2(x, y)
 
     def add_forward_velocity(self, amount: float | int):
-        """Adds 'amount' to the ship's velocity in the same direction it's currently facing."""
+        """Adds 'amount' to the entity's velocity in the same direction it's currently facing."""
         forward_velocity_vector = self.calc_forward_facing_velocity(amount)
         self.velocity_vector += forward_velocity_vector
         self.velocity_vector = self.velocity_vector.clamp_magnitude(MAX_SPEED)
@@ -96,9 +125,11 @@ class Ship:
         self.pos += self.velocity_vector
 
     def calc_drag(self, magnitude: float | int) -> pygame.Vector2:
-        """Find a vector that's the opposite of the ship's velocity vector in order t"""
+        """Find a vector that's the opposite of the entity's velocity vector in order t"""
         if self.velocity_vector.magnitude() > 0:
-            acceleration_vector = self.velocity_vector.normalize() * magnitude * -1  # -1 makes it the opposite direction of the velocity
+            acceleration_vector = (
+                self.velocity_vector.normalize() * magnitude * -1
+            )  # -1 makes it the opposite direction of the velocity
             return acceleration_vector
         else:
             return pygame.Vector2(0, 0)
@@ -109,7 +140,7 @@ class Ship:
         self.velocity_vector += drag_vector
 
     def keep_within_borders(self):
-        # have to use hitbox in some cases because center of pos is on the top left of ship sprite
+        # have to use hitbox in some cases because center of pos is on the top left of entity sprite
         pad = 10
         # left
         if self.pos.x + self.hitbox.right + pad < 0:
@@ -128,7 +159,7 @@ class Ship:
 class Game:
     """Game class encapsulates functionality to make the game run."""
 
-    __slots__ = 'screen', 'dt', 'clock', 'ship'
+    __slots__ = "screen", "dt", "clock", "ship", "projectiles", "asteroids"
 
     def __init__(self, title: str = "NSCCSC Asteroid Clone") -> None:
         """Init Game with initial pygame, display caption, and display size."""
@@ -138,9 +169,12 @@ class Game:
         self.screen.fill((0, 0, 0))
         self.dt = 0  # delta time
         self.clock = pygame.time.Clock()
-        self.ship = Ship(self.screen)
+        self.ship = Entity(self.screen, "assets/ship.png", "assets/shiphitbox.png")
+        self.projectiles: List[Projectile] = []
+        self.asteroids: List[Entity] = []
 
     def run(self) -> None:
+        pygame.time.set_timer(SPAWN_ASTROID, 2500)
         while True:
             self.handle_input()
             self.process_game_logic()
@@ -149,7 +183,9 @@ class Game:
             # use delta time, which is the amount of time that has passed between each frame.
             # this allows behaviour like velocity to be based on actual time passed instead of the amount of frames.
             seconds_per_millisecond = 1000
-            self.dt = self.clock.tick(FRAME_RATE) / seconds_per_millisecond  # NOTE: not currently used
+            self.dt = (
+                self.clock.tick(FRAME_RATE) / seconds_per_millisecond
+            )  # NOTE: not currently used
 
     def handle_input(self):
         keys = pygame.key.get_pressed()
@@ -157,9 +193,30 @@ class Game:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 quit()
+            if event.type == SPAWN_ASTROID:
+                asteroid = Entity(
+                    self.screen, "assets/asteroid.png", "assets/asteroidhitbox.png"
+                )
+
+                asteroid.pos = (
+                    random.randint(0, SCREEN_WIDTH),
+                    random.randint(0, SCREEN_HEIGHT),
+                )
+                asteroid.rotate(random.randint(0, 359))
+                asteroid.add_forward_velocity(0.8)
+                self.asteroids.append(asteroid)
 
         # check for keys within get_pressed() to continuously check which keys are pressed
         keys = pygame.key.get_pressed()
+        if keys[pygame.K_SPACE]:
+            self.projectiles.append(
+                Projectile(
+                    self.ship.pos,
+                    self.ship.direction,
+                    self.ship.calc_forward_facing_velocity(3),
+                    self.ship.total_sprite_rotation,
+                )
+            )
         if keys[pygame.K_w]:
             # multiply by dt to make the increase based on the amount of time that has passed between frames
             self.ship.add_forward_velocity(VELOCITY_INCREASE_ON_KEYPRESS)
@@ -175,11 +232,40 @@ class Game:
         self.ship.move()
         self.ship.slow_down(CONSTANT_DECELERATION)
         self.ship.keep_within_borders()
+        self.move_projectiles()
+        self.move_asteroids()
 
     def draw_game_elements(self):
         self.screen.fill((0, 0, 0))
         self.screen.blit(self.ship.displayed_sprite, self.ship.pos)
+        self.draw_projectiles()
+        self.draw_asteroids()
         pygame.display.flip()
+
+    def move_asteroids(self):
+        for a in self.asteroids:
+            a.move()
+            a.keep_within_borders()
+
+    def draw_asteroids(self):
+        for a in self.asteroids:
+            self.screen.blit(a.sprite, a.pos)
+
+    def move_projectiles(self):
+        for p in self.projectiles:
+            if p.pos.x < 0 or p.pos.x > SCREEN_WIDTH:
+                p.cleanup = True
+            elif p.pos.y < 0 or p.pos.y > SCREEN_HEIGHT:
+                p.cleanup = True
+            p.pos += p.velocity_vector
+
+    def cleanup_projectiles(self):
+        self.projectiles = list(filter(lambda p: p.cleanup == False, self.projectiles))
+
+    def draw_projectiles(self):
+        self.cleanup_projectiles()
+        for p in self.projectiles:
+            self.screen.blit(p.sprite, p.pos)
 
 
 if __name__ == "__main__":
