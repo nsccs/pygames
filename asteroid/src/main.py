@@ -3,6 +3,7 @@ import pygame
 import math
 import random
 from image_loader import ImageLoader
+from background import Background
 
 """
 Explanation of coordinate system:
@@ -159,7 +160,7 @@ class Entity:
 class Game:
     """Game class encapsulates functionality to make the game run."""
 
-    __slots__ = "screen", "dt", "clock", "ship", "projectiles", "asteroids"
+    __slots__ = "screen", "background", "dt", "clock", "ship", "projectiles", "asteroids"
 
     def __init__(self, title: str = "NSCCSC Asteroid Clone") -> None:
         """Init Game with initial pygame, display caption, and display size."""
@@ -167,6 +168,8 @@ class Game:
         pygame.display.set_caption(title)
         self.screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
         self.screen.fill((0, 0, 0))
+        self.background = Background(self.screen)
+        self.background.create_stars(200)
         self.dt = 0  # delta time
         self.clock = pygame.time.Clock()
         self.ship = Entity(self.screen, "assets/ship.png", "assets/shiphitbox.png")
@@ -237,6 +240,7 @@ class Game:
 
     def draw_game_elements(self):
         self.screen.fill((0, 0, 0))
+        self.background.draw_stars()
         self.screen.blit(self.ship.displayed_sprite, self.ship.pos)
         self.draw_projectiles()
         self.draw_asteroids()
