@@ -117,10 +117,10 @@ class Game:
     def draw_game(self):
         self.screen.fill((0, 0, 0))
         # draw score
-        snake_ui.draw_text(f'{len(self.snake.parts)}', self.screen, (255,255,255), (10,10), 'arial.ttf', 46)
         for part in self.snake.parts:
             pygame.draw.rect(self.screen, self.snake.color, pygame.Rect(part[0] * 16, part[1] * 16, 16, 16))
         pygame.draw.rect(self.screen, self.fruit.color, pygame.Rect(self.fruit.position[0] * 16, self.fruit.position[1] * 16, 16, 16))
+        snake_ui.draw_text(f'{len(self.snake.parts)}', self.screen, (255,255,255), (10,10), 'arial.ttf', 46)
         pygame.display.flip()
 
 
